@@ -46,7 +46,7 @@ our $VERSION = '0.01';
                     my $b = $self->preprocess_b->($res_b->body);
                     is diff(\"$a", \"$b"), '', "exact match for $url_a";
                 } else {
-                    is $res_a->body, $res_b->body, 'match size';
+                    is $res_a->body, $res_b->body, "exact match for $url_a";
                 }
                 
                 if ($res_a->headers->content_type =~ qr{^text/html\b}) {

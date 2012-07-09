@@ -86,14 +86,14 @@ CompBot - Compare a site with mirror
 
     use CompBot;
     
-    my $sd = CompBot->new;
-    $sd->url_match(qr{dev.example.com});
-    $sd->url_translate(sub {
+    my $cbot = CompBot->new;
+    $cbot->url_match(qr{dev.example.com});
+    $cbot->url_translate(sub {
         my $url = shift;
         $url->host('example.com');
         return $url;
     });
-    $sd->start('http://dev.example.com/index.htm');
+    $cbot->start('http://dev.example.com/index.htm');
 
 =head1 DESCRIPTION
 
@@ -119,7 +119,7 @@ Can set code ref for pre-processing for response body of B.
 Generate B URL from A URL. The code gets Mojo::URL object and must
 returns B URL.
 
-    $sd->url_translate(sub {
+    $cbot->url_translate(sub {
         my $url = shift;
         $url->host('example.com');
         return $url;
@@ -139,7 +139,7 @@ Restrict target URL by regular expression. This is matched to A URL.
 
 Start comparing.
 
-    $sd->start('http://dev.example.com/index.htm');
+    $cbot->start('http://dev.example.com/index.htm');
 
 =head1 AUTHOR
 

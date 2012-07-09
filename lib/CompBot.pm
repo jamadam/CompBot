@@ -1,16 +1,15 @@
 package CompBot;
 use strict;
 use warnings;
-use lib 'lib';
-use Mojo::UserAgent;
 use Mojo::Base -base;
+use Mojo::UserAgent;
 use Mojo::DOM;
 use Mojo::IOLoop;
 use Text::Diff;
 use Test::More;
 our $VERSION = '0.01';
     
-    has ua => sub {Mojo::UserAgent->new};
+    has ua => sub {Mojo::UserAgent->new->max_redirects(5)};
     has preprocess_a => sub {sub {shift}};
     has preprocess_b => sub {sub {shift}};
     has 'url_translate';

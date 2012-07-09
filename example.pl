@@ -8,7 +8,6 @@ use lib join '/', File::Spec->splitdir(File::Spec->rel2abs(dirname(__FILE__))), 
 use CompBot;
     
     my $sd = CompBot->new;
-    $sd->ua->max_redirects(5);
     $sd->url_match(qr{test.example.com});
     $sd->url_translate(sub {
         my $url = shift;

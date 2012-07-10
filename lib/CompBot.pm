@@ -10,13 +10,14 @@ use Test::More;
 use List::Util;
 our $VERSION = '0.01';
     
-    has ua => sub {Mojo::UserAgent->new->max_redirects(5)};
-    has preprocess_a => sub {sub {shift}};
-    has preprocess_b => sub {sub {shift}};
+    has ua              => sub {Mojo::UserAgent->new->max_redirects(5)};
+    has preprocess_a    => sub {sub {shift}};
+    has preprocess_b    => sub {sub {shift}};
     has 'url_translate';
-    has sleep => '1';
-    has 'url_match';
-    has shuffle => 0;
+    has sleep           => '1';
+    has 'url_match'     => '';
+    has shuffle         => 0;
+    has extension_not   => sub{[]};
     
     sub start {
         my ($self, $url) = @_;
@@ -39,7 +40,7 @@ our $VERSION = '0.01';
                 my $res_a = $self->ua->get($url_a)->res;
                 my $res_b = $self->ua->get($url_b)->res;
                 if ($res_a->code ne $res_b->code) {
-                    ok 0, "right http status code for $res_a";
+                    ok 0, "right http status code for $url_a";
                     return;
                 }
                 
@@ -65,17 +66,33 @@ our $VERSION = '0.01';
     
     sub collect_urls {
         my ($self, $base, $dom) = @_;
+        
         my $collection =
         $dom->find('script, link, a, img, area, embed, frame, iframe, input, meta[http\-equiv=Refresh]')->map(sub {
             my $dom = shift;
             if (my $href = $dom->{href} || $dom->{src} ||
                 $dom->{content} && ($dom->{content} =~ qr{URL=(.+)}i)[0]) {
                 my $url = Mojo::URL->new($href);
-                $url->base($base)->fragment(undef)->to_abs->to_string;
+                
+                if (! $url->path->trailing_slash) {
+                    if ((${$url->path->parts}[-1] || '') =~ qr{\.(\w+)$}) {
+                        my $ext = $1;
+                        if (grep {$_ eq $ext} @{$self->extension_not}) {
+                            return;
+                        }
+                    }
+                }
+                
+                my $ret = $url->base($base)->fragment(undef)->to_abs->to_string;
+                
+                if ($ret !~ $self->url_match) {
+                    return;
+                }
+                
+                return $ret;
             }
-        })->grep(sub {
-            $_ && $_ =~ $self->url_match;
-        })->uniq;
+        })->grep(sub{$_})->uniq;
+        
         return @$collection;
     }
 

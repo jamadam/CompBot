@@ -7,6 +7,7 @@ use Mojo::DOM;
 use Mojo::IOLoop;
 use Text::Diff;
 use Test::More;
+use List::Util;
 our $VERSION = '0.01';
     
     has ua => sub {Mojo::UserAgent->new->max_redirects(5)};
@@ -15,6 +16,7 @@ our $VERSION = '0.01';
     has 'url_translate';
     has sleep => '1';
     has 'url_match';
+    has shuffle => 0;
     
     sub start {
         my ($self, $url) = @_;
@@ -51,6 +53,9 @@ our $VERSION = '0.01';
                 
                 if ($res_a->headers->content_type =~ qr{^text/html\b}) {
                     push(@queue, $self->collect_urls($url_a, $res_a->dom));
+                    if ($self->shuffle) {
+                        @queue = List::Util::shuffle @queue;
+                    }
                 }
             }
         });
@@ -124,6 +129,10 @@ returns B URL.
         $url->host('example.com');
         return $url;
     });
+
+=head2 shuffle
+
+Shuffle the queue so that the tests are run random order.
 
 =head2 sleep
 

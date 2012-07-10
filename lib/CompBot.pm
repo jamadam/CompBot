@@ -13,20 +13,21 @@ our $VERSION = '0.01';
     has preprocess_a => sub {sub {shift}};
     has preprocess_b => sub {sub {shift}};
     has 'url_translate';
-    has queue => sub {[]};
     has sleep => '1';
     has 'url_match';
     
     sub start {
         my ($self, $url) = @_;
         
-        push(@{$self->queue}, $url);
+        my @queue;
+        
+        push(@queue, $url);
         
         my %fixed;
         my $loop_id;
         
         $loop_id = Mojo::IOLoop->recurring($self->{sleep} => sub {
-            if (my $url = shift @{$self->queue}) {
+            if (my $url = shift @queue) {
                 if ($fixed{$url}) {
                     return;
                 }
@@ -49,8 +50,7 @@ our $VERSION = '0.01';
                 }
                 
                 if ($res_a->headers->content_type =~ qr{^text/html\b}) {
-                    push(@{$self->queue},
-                        $self->collect_urls($url_a, $res_a->dom));
+                    push(@queue, $self->collect_urls($url_a, $res_a->dom));
                 }
             }
         });

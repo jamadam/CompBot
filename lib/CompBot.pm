@@ -15,9 +15,28 @@ our $VERSION = '0.01';
     has preprocess_b    => sub {sub {shift}};
     has 'url_translate';
     has sleep           => '1';
-    has 'url_match'     => '';
+    has '_url_match'     => sub{[]};
+    has '_url_not_match'     => sub{[]};
     has shuffle         => 0;
     has extension_not   => sub{[]};
+    
+    sub url_match {
+        my ($self, $regexp) = @_;
+        if ($regexp) {
+            push(@{$self->_url_match}, $regexp);
+            return $self;
+        }
+        return $self->_url_match;
+    }
+    
+    sub url_not_match {
+        my ($self, $regexp) = @_;
+        if ($regexp) {
+            push(@{$self->_url_not_match}, $regexp);
+            return $self;
+        }
+        return $self->_url_not_match;
+    }
     
     sub start {
         my ($self, $url) = @_;
@@ -85,8 +104,16 @@ our $VERSION = '0.01';
                 
                 my $ret = $url->base($base)->fragment(undef)->to_abs->to_string;
                 
-                if ($ret !~ $self->url_match) {
-                    return;
+                for my $regexp (@{$self->_url_match}) {
+                    if ($ret !~ $regexp) {
+                        return;
+                    }
+                }
+                
+                for my $regexp (@{$self->_url_not_match}) {
+                    if ($ret =~ $regexp) {
+                        return;
+                    }
                 }
                 
                 return $ret;
@@ -110,6 +137,9 @@ CompBot - Compare a site with mirror
     
     my $cbot = CompBot->new;
     $cbot->url_match(qr{dev.example.com});
+    $cbot->url_not_match(qr{/test/});
+    $cbot->url_not_match(qr{/test2/});
+    $cbot->url_not_match(qr{/test3/});
     $cbot->url_translate(sub {
         my $url = shift;
         $url->host('example.com');
@@ -156,6 +186,10 @@ Shuffle the queue so that the tests are run random order.
 Set the interval of HTTP requests in second.
 
 =head2 url_match
+
+Restrict target URL by regular expression. This is matched to A URL.
+
+=head2 url_not_match
 
 Restrict target URL by regular expression. This is matched to A URL.
 

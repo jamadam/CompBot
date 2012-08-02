@@ -9,119 +9,119 @@ use Text::Diff;
 use Test::More;
 use List::Util;
 our $VERSION = '0.01';
-    
-    has ua              => sub {Mojo::UserAgent->new->max_redirects(5)};
-    has preprocess_a    => sub {sub {shift}};
-    has preprocess_b    => sub {sub {shift}};
-    has 'url_translate';
-    has sleep           => '1';
-    has '_url_match'     => sub{[]};
-    has '_url_not_match'     => sub{[]};
-    has shuffle         => 0;
-    has extension_not   => sub{[]};
-    
-    sub url_match {
-        my ($self, $regexp) = @_;
-        if ($regexp) {
-            push(@{$self->_url_match}, $regexp);
-            return $self;
-        }
-        return $self->_url_match;
+
+has ua              => sub {Mojo::UserAgent->new->max_redirects(5)};
+has preprocess_a    => sub {sub {shift}};
+has preprocess_b    => sub {sub {shift}};
+has 'url_translate';
+has sleep           => '1';
+has '_url_match'     => sub{[]};
+has '_url_not_match'     => sub{[]};
+has shuffle         => 0;
+has extension_not   => sub{[]};
+
+sub url_match {
+    my ($self, $regexp) = @_;
+    if ($regexp) {
+        push(@{$self->_url_match}, $regexp);
+        return $self;
     }
-    
-    sub url_not_match {
-        my ($self, $regexp) = @_;
-        if ($regexp) {
-            push(@{$self->_url_not_match}, $regexp);
-            return $self;
-        }
-        return $self->_url_not_match;
+    return $self->_url_match;
+}
+
+sub url_not_match {
+    my ($self, $regexp) = @_;
+    if ($regexp) {
+        push(@{$self->_url_not_match}, $regexp);
+        return $self;
     }
+    return $self->_url_not_match;
+}
+
+sub start {
+    my ($self, $url) = @_;
     
-    sub start {
-        my ($self, $url) = @_;
-        
-        my @queue;
-        
-        push(@queue, $url);
-        
-        my %fixed;
-        my $loop_id;
-        
-        $loop_id = Mojo::IOLoop->recurring($self->{sleep} => sub {
-            if (my $url = shift @queue) {
-                if ($fixed{$url}) {
-                    return;
-                }
-                $fixed{$url}++;
-                my $url_a = Mojo::URL->new($url);
-                my $url_b = Mojo::URL->new($self->url_translate->($url_a->clone));
-                my $res_a = $self->ua->get($url_a)->res;
-                my $res_b = $self->ua->get($url_b)->res;
-                if ($res_a->code ne $res_b->code) {
-                    ok 0, "right http status code for $url_a";
-                    return;
-                }
-                
-                if ($res_a->headers->content_type =~ qr{^text/}) {
-                    my $a = $self->preprocess_a->($res_a->body);
-                    my $b = $self->preprocess_b->($res_b->body);
-                    is diff(\"$a", \"$b"), '', "exact match for $url_a";
-                } else {
-                    is $res_a->body, $res_b->body, "exact match for $url_a";
-                }
-                
-                if ($res_a->headers->content_type =~ qr{^text/html\b}) {
-                    push(@queue, $self->collect_urls($url_a, $res_a->dom));
-                    if ($self->shuffle) {
-                        @queue = List::Util::shuffle @queue;
-                    }
+    my @queue;
+    
+    push(@queue, $url);
+    
+    my %fixed;
+    my $loop_id;
+    
+    $loop_id = Mojo::IOLoop->recurring($self->{sleep} => sub {
+        if (my $url = shift @queue) {
+            if ($fixed{$url}) {
+                return;
+            }
+            $fixed{$url}++;
+            my $url_a = Mojo::URL->new($url);
+            my $url_b = Mojo::URL->new($self->url_translate->($url_a->clone));
+            my $res_a = $self->ua->get($url_a)->res;
+            my $res_b = $self->ua->get($url_b)->res;
+            if ($res_a->code ne $res_b->code) {
+                ok 0, "right http status code for $url_a";
+                return;
+            }
+            
+            if ($res_a->headers->content_type =~ qr{^text/}) {
+                my $a = $self->preprocess_a->($res_a->body);
+                my $b = $self->preprocess_b->($res_b->body);
+                is diff(\"$a", \"$b"), '', "exact match for $url_a";
+            } else {
+                is $res_a->body, $res_b->body, "exact match for $url_a";
+            }
+            
+            if ($res_a->headers->content_type =~ qr{^text/html\b}) {
+                push(@queue, $self->collect_urls($url_a, $res_a->dom));
+                if ($self->shuffle) {
+                    @queue = List::Util::shuffle @queue;
                 }
             }
-        });
-        
-        Mojo::IOLoop->start;
-    }
+        }
+    });
     
-    sub collect_urls {
-        my ($self, $base, $dom) = @_;
-        
-        my $collection =
-        $dom->find('script, link, a, img, area, embed, frame, iframe, input, meta[http\-equiv=Refresh]')->map(sub {
-            my $dom = shift;
-            if (my $href = $dom->{href} || $dom->{src} ||
-                $dom->{content} && ($dom->{content} =~ qr{URL=(.+)}i)[0]) {
-                my $url = Mojo::URL->new($href);
-                
-                if (! $url->path->trailing_slash) {
-                    if ((${$url->path->parts}[-1] || '') =~ qr{\.(\w+)$}) {
-                        my $ext = $1;
-                        if (grep {$_ eq $ext} @{$self->extension_not}) {
-                            return;
-                        }
-                    }
-                }
-                
-                my $ret = $url->base($base)->fragment(undef)->to_abs->to_string;
-                
-                for my $regexp (@{$self->_url_match}) {
-                    if ($ret !~ $regexp) {
+    Mojo::IOLoop->start;
+}
+
+sub collect_urls {
+    my ($self, $base, $dom) = @_;
+    
+    my $collection =
+    $dom->find('script, link, a, img, area, embed, frame, iframe, input, meta[http\-equiv=Refresh]')->map(sub {
+        my $dom = shift;
+        if (my $href = $dom->{href} || $dom->{src} ||
+            $dom->{content} && ($dom->{content} =~ qr{URL=(.+)}i)[0]) {
+            my $url = Mojo::URL->new($href);
+            
+            if (! $url->path->trailing_slash) {
+                if ((${$url->path->parts}[-1] || '') =~ qr{\.(\w+)$}) {
+                    my $ext = $1;
+                    if (grep {$_ eq $ext} @{$self->extension_not}) {
                         return;
                     }
                 }
-                
-                for my $regexp (@{$self->_url_not_match}) {
-                    if ($ret =~ $regexp) {
-                        return;
-                    }
-                }
-                
-                return $ret;
             }
-        })->grep(sub{$_})->uniq;
-        
-        return @$collection;
-    }
+            
+            my $ret = $url->base($base)->fragment(undef)->to_abs->to_string;
+            
+            for my $regexp (@{$self->_url_match}) {
+                if ($ret !~ $regexp) {
+                    return;
+                }
+            }
+            
+            for my $regexp (@{$self->_url_not_match}) {
+                if ($ret =~ $regexp) {
+                    return;
+                }
+            }
+            
+            return $ret;
+        }
+    })->grep(sub{$_})->uniq;
+    
+    return @$collection;
+}
 
 1;
 

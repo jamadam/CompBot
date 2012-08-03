@@ -77,6 +77,8 @@ sub start {
                     @queue = List::Util::shuffle @queue;
                 }
             }
+        } else {
+            Mojo::IOLoop->remove($loop_id);
         }
     });
     

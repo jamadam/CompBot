@@ -56,8 +56,10 @@ sub start {
             $fixed{$url}++;
             my $url_a = Mojo::URL->new($url);
             my $url_b = Mojo::URL->new($self->url_translate->($url_a->clone));
-            my $res_a = $self->ua->get($url_a)->res;
-            my $res_b = $self->ua->get($url_b)->res;
+            my $tx_a = $self->ua->get($url_a);
+            my $tx_b = $self->ua->get($url_b);
+            my $res_a = $tx_a->res;
+            my $res_b = $tx_b->res;
             if ($res_a->code ne $res_b->code) {
                 ok 0, "right http status code for $url_a";
                 return;
@@ -72,7 +74,7 @@ sub start {
             }
             
             if ($res_a->headers->content_type =~ qr{^text/html\b}) {
-                push(@queue, $self->collect_urls($url_a, $res_a->dom));
+                push(@queue, $self->collect_urls($tx_a->req->url, $res_a->dom));
                 if ($self->shuffle) {
                     @queue = List::Util::shuffle @queue;
                 }

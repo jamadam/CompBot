@@ -20,6 +20,10 @@ has '_url_not_match'     => sub{[]};
 has shuffle         => 0;
 has extension_not   => sub{[]};
 
+sub max_message_size {
+    $ENV{MOJO_MAX_MESSAGE_SIZE} = shift;
+}
+
 sub url_match {
     my ($self, $regexp) = @_;
     if ($regexp) {
@@ -70,7 +74,7 @@ sub start {
                 my $b = $self->preprocess_b->($res_b->body);
                 is diff(\"$a", \"$b"), '', "exact match for $url_a";
             } else {
-                is $res_a->body, $res_b->body, "exact match for $url_a";
+                ok $res_a->body eq $res_b->body, "exact match for $url_a";
             }
             
             if ($res_a->headers->content_type =~ qr{^text/html\b}) {
@@ -157,6 +161,10 @@ This is a tool for comparing two websites. You can recursively compare the web
 pages of two.
 
 =head1 ATTRIBUTES
+
+=head2 max_message_size
+
+Set max size per file.
 
 =head2 ua
 
